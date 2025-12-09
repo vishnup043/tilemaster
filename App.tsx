@@ -1,59 +1,30 @@
+
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Package, Users, Briefcase, Menu, X, LogOut, Database, Loader2, AlertTriangle, Copy, Check } from 'lucide-react';
+import { LayoutDashboard, Package, Users, Briefcase, Menu, X, LogOut, Database, Loader2, AlertTriangle, Copy, Check, Camera, Save, UserCog, Lock, WifiOff, RefreshCw, Bell, Home } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { StockManager } from './components/StockManager';
 import { CustomerManager } from './components/CustomerManager';
 import { EmployeeManager } from './components/EmployeeManager';
 import { Login } from './components/Login';
-import { Tile, Customer, Employee, ViewState, StockType } from './types';
+import { Tile, Customer, Employee, ViewState, AppNotification } from './types';
 import { DB } from './services/db';
 import { isSupabaseConfigured } from './services/supabase';
-
-// Initial Mock Data (Seed Data for new Database)
-const INITIAL_TILES: Tile[] = [
-  { id: '1', name: 'Carrara White', type: StockType.MARBLE, size: '60x60cm', price: 45, stockQuantity: 120, description: 'Elegant Italian marble with soft grey veining.', imageUrl: 'https://picsum.photos/400/400?random=1' },
-  { id: '2', name: 'Urban Concrete', type: StockType.PORCELAIN, size: '80x80cm', price: 32, stockQuantity: 400, description: 'Modern industrial look suitable for high traffic.', imageUrl: 'https://picsum.photos/400/400?random=2' },
-  { id: '3', name: 'Royal Blue Mosaic', type: StockType.MOSAIC, size: '30x30cm', price: 28, stockQuantity: 85, description: 'Vibrant blue glass mosaic for pool or bathroom features.', imageUrl: 'https://picsum.photos/400/400?random=3' },
-  { id: '4', name: 'Oak Wood Plank', type: StockType.WOOD_LOOK, size: '20x120cm', price: 38, stockQuantity: 250, description: 'Warm wood texture with the durability of ceramic.', imageUrl: 'https://picsum.photos/400/400?random=4' },
-];
-
-const INITIAL_EMPLOYEES: Employee[] = [
-  { id: '1', name: 'Alice Smith', role: 'Sales Manager (Admin)', email: 'alice@tilemaster.com', status: 'Active', joinDate: '2023-01-15', username: 'alice.admin', password: 'password123' },
-  { id: '2', name: 'Bob Jones', role: 'Warehouse Lead', email: 'bob@tilemaster.com', status: 'Active', joinDate: '2023-03-22' },
-  { id: '3', name: 'Sarah Connor', role: 'Sales Executive', email: 'sarah@tilemaster.com', status: 'Active', joinDate: '2023-06-10', username: 'sarah.sales', password: 'sales123' },
-];
-
-// Helper to get local YYYY-MM-DD
-const getLocalToday = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
-
-const getLocalTomorrow = () => {
-    const now = new Date();
-    now.setDate(now.getDate() + 1);
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
-
-// Mock Customers with Assignments
-const INITIAL_CUSTOMERS: Customer[] = [
-  { id: '1', name: 'John Doe Construction', email: 'john@doeconst.com', phone: '555-0123', address: '123 Builder Lane, Metro City', totalSpent: 15400, purchasedVolume: 1200, assignedTo: '1', meetingDate: getLocalToday(), meetingInfo: 'Discuss Q4 Bulk Order' },
-  { id: '2', name: 'Sarah Interiors', email: 'sarah@design.com', phone: '555-9876', address: '45 Design Ave, Arts District', totalSpent: 8200, purchasedVolume: 450, assignedTo: '3', meetingDate: getLocalTomorrow(), meetingInfo: 'Contract Renewal' }, 
-];
 
 function App() {
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Sidebar state removed as we use persistent bottom nav for mobile now
   const [isLoading, setIsLoading] = useState(true);
   const [showDbSetup, setShowDbSetup] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
   
+  // Profile Modal State
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileData, setProfileData] = useState({ avatarUrl: '', password: '' });
+
+  // Notification State
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
   // Data State
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -65,6 +36,13 @@ function App() {
       // 1. Health Check for Supabase
       if (isSupabaseConfigured) {
           const status = await DB.checkHealth();
+          
+          if (status === 'CONNECTION_ERROR') {
+              setConnectionError(true);
+              setIsLoading(false);
+              return;
+          }
+
           if (status === 'MISSING_TABLES') {
               setShowDbSetup(true);
               setIsLoading(false);
@@ -75,14 +53,16 @@ function App() {
       // 2. Load Data
       try {
         const [loadedTiles, loadedCustomers, loadedEmployees] = await Promise.all([
-          DB.loadTiles(INITIAL_TILES),
-          DB.loadCustomers(INITIAL_CUSTOMERS),
-          DB.loadEmployees(INITIAL_EMPLOYEES)
+          DB.loadTiles([]),
+          DB.loadCustomers([]),
+          DB.loadEmployees([])
         ]);
         
+        // Strictly use database values. If empty, the app starts empty.
+        setEmployees(loadedEmployees);
         setTiles(loadedTiles);
         setCustomers(loadedCustomers);
-        setEmployees(loadedEmployees);
+
       } catch (error) {
         console.error("Failed to load data", error);
       } finally {
@@ -93,9 +73,19 @@ function App() {
   }, []);
 
   // Database Sync: Automatically save changes whenever state updates
-  useEffect(() => { if (!isLoading && !showDbSetup) DB.saveTiles(tiles); }, [tiles, isLoading, showDbSetup]);
-  useEffect(() => { if (!isLoading && !showDbSetup) DB.saveCustomers(customers); }, [customers, isLoading, showDbSetup]);
-  useEffect(() => { if (!isLoading && !showDbSetup) DB.saveEmployees(employees); }, [employees, isLoading, showDbSetup]);
+  useEffect(() => { if (!isLoading && !showDbSetup && !connectionError) DB.saveTiles(tiles); }, [tiles, isLoading, showDbSetup, connectionError]);
+  useEffect(() => { if (!isLoading && !showDbSetup && !connectionError) DB.saveCustomers(customers); }, [customers, isLoading, showDbSetup, connectionError]);
+  useEffect(() => { if (!isLoading && !showDbSetup && !connectionError) DB.saveEmployees(employees); }, [employees, isLoading, showDbSetup, connectionError]);
+
+  // Sync profile form data when modal opens
+  useEffect(() => {
+    if (isProfileOpen && currentUser) {
+        setProfileData({
+            avatarUrl: currentUser.avatarUrl || '',
+            password: currentUser.password || ''
+        });
+    }
+  }, [isProfileOpen, currentUser]);
 
   // Helper to determine if user has admin privileges
   const isAdmin = (user: Employee) => {
@@ -127,8 +117,59 @@ function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
-    setIsSidebarOpen(false);
+    setIsNotificationsOpen(false);
+    setIsProfileOpen(false);
   };
+
+  const handleProfileUpdate = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!currentUser) return;
+      
+      const updatedUser = { 
+          ...currentUser, 
+          avatarUrl: profileData.avatarUrl,
+          password: profileData.password
+      };
+      
+      setCurrentUser(updatedUser);
+      setEmployees(prev => prev.map(emp => emp.id === currentUser.id ? updatedUser : emp));
+      setIsProfileOpen(false);
+  };
+
+  const handleMarkRead = (notificationId: string) => {
+      if (!currentUser) return;
+      
+      const updatedNotifications = (currentUser.notifications || []).map(n => 
+          n.id === notificationId ? { ...n, isRead: true } : n
+      );
+      
+      const updatedUser = { ...currentUser, notifications: updatedNotifications };
+      setCurrentUser(updatedUser);
+      setEmployees(prev => prev.map(emp => emp.id === currentUser.id ? updatedUser : emp));
+  };
+
+  // derived state for notifications
+  const userNotifications = currentUser?.notifications || [];
+  const unreadCount = userNotifications.filter(n => !n.isRead).length;
+
+  // Derive upcoming meeting notification
+  const getNextMeeting = () => {
+      if (!currentUser) return null;
+      
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+
+      const upcoming = customers
+        .filter(c => c.assignedTo === currentUser.id && c.meetingDate && c.meetingDate >= todayStr)
+        .sort((a, b) => (a.meetingDate! > b.meetingDate!) ? 1 : -1);
+      
+      return upcoming.length > 0 ? upcoming[0] : null;
+  };
+
+  const nextMeeting = getNextMeeting();
 
   if (isLoading) {
     return (
@@ -137,6 +178,30 @@ function App() {
         <p className="font-medium text-slate-500">Connecting to database...</p>
       </div>
     );
+  }
+
+  // Connection Error Screen
+  if (connectionError) {
+      return (
+          <div className="h-screen w-full flex items-center justify-center bg-slate-100 p-4">
+              <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 text-center">
+                  <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <WifiOff size={32} />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-800 mb-2">Connection Failed</h2>
+                  <p className="text-slate-500 mb-6">
+                      We could not connect to the Supabase database. This usually indicates a network issue or firewall restriction.
+                  </p>
+                  <button 
+                      onClick={() => window.location.reload()}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
+                  >
+                      <RefreshCw size={20} />
+                      Retry Connection
+                  </button>
+              </div>
+          </div>
+      );
   }
 
   // Database Setup Modal (Shown if tables missing)
@@ -227,11 +292,13 @@ create policy "Public Access Employees" on employees for all using (true);
         return null;
     }
 
+    const isActive = currentView === view;
+
     return (
         <button
-        onClick={() => { setCurrentView(view); setIsSidebarOpen(false); }}
+        onClick={() => { setCurrentView(view); }}
         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
-            currentView === view 
+            isActive 
             ? 'bg-indigo-600 text-white shadow-md' 
             : 'text-slate-400 hover:bg-slate-800 hover:text-white'
         }`}
@@ -242,84 +309,278 @@ create policy "Public Access Employees" on employees for all using (true);
     );
   };
 
-  return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
-      {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden backdrop-blur-sm"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+  const MobileNavItem = ({ view, icon: Icon, label, requiredRole }: { view: ViewState, icon: any, label: string, requiredRole?: string }) => {
+      if (requiredRole === 'admin' && !isAdmin(currentUser)) return null;
+      
+      const isActive = currentView === view;
+      
+      return (
+          <button 
+            onClick={() => setCurrentView(view)}
+            className={`flex flex-col items-center justify-center p-2 rounded-xl transition duration-200 flex-1 ${isActive ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+              <Icon size={24} className={isActive ? 'fill-current' : ''} />
+              <span className="text-[10px] font-bold mt-1">{label}</span>
+          </button>
+      )
+  }
 
-      {/* Sidebar */}
-      <aside className={`
-        fixed lg:static inset-y-0 left-0 z-30 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        <div className="p-6 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
-                    <span className="font-bold text-xl">T</span>
+  return (
+    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+      
+      {/* Desktop Sidebar (Hidden on Mobile) */}
+      <aside className="hidden lg:flex flex-col w-72 bg-slate-900 text-white shadow-none transition-all duration-300">
+        <div className="p-6 flex items-center justify-between border-b border-slate-800/50">
+            <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <span className="font-bold text-xl text-white">T</span>
                 </div>
-                <h1 className="text-xl font-bold tracking-tight">TileMaster</h1>
+                <h1 className="text-xl font-bold tracking-tight text-white">TileMaster</h1>
             </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-400">
-                <X size={24} />
-            </button>
         </div>
 
-        <nav className="px-4 space-y-2 mt-4">
+        <nav className="px-4 space-y-2 mt-6 flex-1">
           <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Dashboard" />
           <NavItem view="INVENTORY" icon={Package} label="Inventory" />
           <NavItem view="CUSTOMERS" icon={Users} label="Customers" />
-          <NavItem view="EMPLOYEES" icon={Briefcase} label="Employees" requiredRole="admin" />
+          <NavItem view="EMPLOYEES" icon={Briefcase} label="Team" requiredRole="admin" />
         </nav>
 
-        <div className="absolute bottom-0 w-full p-4 border-t border-slate-800">
-            <div className={`mb-4 px-4 flex items-center gap-2 text-xs ${isSupabaseConfigured ? 'text-emerald-400' : 'text-amber-400'}`}>
+        <div className="p-4 border-t border-slate-800 bg-slate-900/50">
+            <div className={`mb-4 px-4 flex items-center gap-2 text-xs font-medium ${isSupabaseConfigured ? 'text-emerald-400' : 'text-amber-400'}`}>
                 <Database size={12} />
-                <span>{isSupabaseConfigured ? 'Supabase Database' : 'Local Storage Mode'}</span>
+                <span>{isSupabaseConfigured ? 'Database Connected' : 'Local Storage'}</span>
             </div>
             <button 
                 onClick={handleLogout}
-                className="flex items-center gap-3 text-slate-400 hover:text-white transition px-4 py-2 w-full"
+                className="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition px-4 py-3 w-full"
             >
                 <LogOut size={20} />
-                <span>Sign Out</span>
+                <span className="font-medium">Sign Out</span>
             </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative bg-slate-50/50">
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-10">
-          <button 
-            onClick={() => setIsSidebarOpen(true)}
-            className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-          >
-            <Menu size={24} />
-          </button>
+        <header className="h-16 bg-white border-b border-slate-200/60 flex items-center justify-between px-4 lg:px-8 shadow-sm z-20 sticky top-0">
+          <div className="lg:hidden flex items-center gap-2 text-slate-800 font-bold text-lg">
+             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm">TM</div>
+             TileMaster
+          </div>
           
-          <div className="flex items-center gap-4 ml-auto">
-            <div className="hidden sm:block text-right">
-                <p className="text-sm font-semibold text-slate-800">{currentUser.name}</p>
-                <p className="text-xs text-slate-500">{currentUser.role}</p>
-            </div>
-            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold border border-indigo-200 uppercase">
-                {currentUser.name.slice(0, 2)}
-            </div>
+          <div className="ml-auto flex items-center gap-4 md:gap-6">
+              {/* Notification Bell */}
+              <div className="relative">
+                  <button 
+                    onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                    className="p-2.5 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-full transition relative"
+                  >
+                      <Bell size={20} />
+                      {(unreadCount > 0 || nextMeeting) && (
+                          <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+                      )}
+                  </button>
+
+                  {isNotificationsOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsNotificationsOpen(false)}></div>
+                        <div className="absolute top-full right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200/60 z-20 overflow-hidden animate-fade-in origin-top-right ring-1 ring-slate-900/5 mx-2">
+                            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center backdrop-blur-xl">
+                                <h4 className="font-bold text-slate-800 text-sm">Notifications</h4>
+                                <button onClick={() => setIsNotificationsOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={16}/></button>
+                            </div>
+                            <div className="max-h-[60vh] overflow-y-auto p-2 space-y-2">
+                                {/* Upcoming Meeting Notification */}
+                                {nextMeeting && (
+                                    <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl">
+                                        <div className="flex items-start gap-3">
+                                            <div className="bg-indigo-100 p-2 rounded-full text-indigo-600 shrink-0 mt-0.5 shadow-sm">
+                                                <Users size={14} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-indigo-900 uppercase tracking-wide mb-1">Upcoming Meeting</p>
+                                                <p className="text-sm font-semibold text-indigo-900 mb-0.5">{nextMeeting.meetingInfo || 'Meeting Scheduled'}</p>
+                                                <p className="text-xs text-indigo-600 font-medium">
+                                                    {nextMeeting.name} • {nextMeeting.meetingDate}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Admin Messages */}
+                                {userNotifications.length > 0 ? (
+                                    userNotifications.slice().reverse().map(note => (
+                                        <div 
+                                            key={note.id} 
+                                            onClick={() => handleMarkRead(note.id)}
+                                            className={`p-3 rounded-xl border cursor-pointer transition ${note.isRead ? 'bg-white border-slate-100 opacity-60' : 'bg-white border-slate-200 shadow-sm hover:border-indigo-200 hover:shadow-md'}`}
+                                        >
+                                            <div className="flex justify-between items-start mb-1.5">
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${note.sender === 'Admin' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                    {note.sender}
+                                                </span>
+                                                {!note.isRead && <span className="w-2 h-2 bg-indigo-500 rounded-full ring-2 ring-indigo-100"></span>}
+                                            </div>
+                                            <p className="text-sm text-slate-700 mb-2 leading-relaxed">{note.message}</p>
+                                            <p className="text-[10px] text-slate-400 text-right font-medium">{new Date(note.date).toLocaleDateString()}</p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    !nextMeeting && (
+                                        <div className="text-center py-8 text-slate-400 text-sm">
+                                            <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                <Bell size={20} className="text-slate-300"/>
+                                            </div>
+                                            No notifications
+                                        </div>
+                                    )
+                                )}
+                            </div>
+                        </div>
+                      </>
+                  )}
+              </div>
+
+              {/* User Profile */}
+              <div 
+                className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 pl-2 pr-1 py-1.5 rounded-full border border-transparent hover:border-slate-200 transition group"
+                onClick={() => setIsProfileOpen(true)}
+                title="Manage Profile"
+              >
+                <div className="hidden sm:block text-right pr-1">
+                    <p className="text-sm font-semibold text-slate-700 group-hover:text-indigo-700 transition-colors">{currentUser.name}</p>
+                    <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">{currentUser.role}</p>
+                </div>
+                <div className="relative">
+                    {currentUser.avatarUrl ? (
+                        <img 
+                            src={currentUser.avatarUrl} 
+                            alt={currentUser.name} 
+                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-white shadow-sm group-hover:shadow transition" 
+                        />
+                    ) : (
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold border-2 border-white shadow-sm uppercase text-sm">
+                            {currentUser.name.slice(0, 2)}
+                        </div>
+                    )}
+                    <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-1 border border-slate-100 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity scale-75 sm:scale-100">
+                        <UserCog size={12} className="text-indigo-600" />
+                    </div>
+                </div>
+              </div>
           </div>
         </header>
 
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-auto p-4 md:p-8">
-          <div className="max-w-7xl mx-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-8 bg-slate-50/50 pb-24 lg:pb-8">
+          <div className="max-w-7xl mx-auto w-full">
             {renderContent()}
           </div>
         </div>
+        
+        {/* Mobile Bottom Navigation Bar */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-2 pb-safe z-40 shadow-xl-up">
+           <MobileNavItem view="DASHBOARD" icon={LayoutDashboard} label="Home" />
+           <MobileNavItem view="INVENTORY" icon={Package} label="Stock" />
+           <MobileNavItem view="CUSTOMERS" icon={Users} label="Clients" />
+           <MobileNavItem view="EMPLOYEES" icon={Briefcase} label="Team" requiredRole="admin" />
+        </nav>
       </main>
+
+      {/* Profile Management Modal */}
+      {isProfileOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in zoom-in-95 duration-200">
+              <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden mx-4">
+                  <div className="bg-slate-50/80 backdrop-blur-xl px-6 py-4 border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
+                      <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                          <UserCog size={20} className="text-indigo-600"/> My Profile
+                      </h3>
+                      <button onClick={() => setIsProfileOpen(false)} className="text-slate-400 hover:text-slate-600 transition p-1 hover:bg-slate-200/50 rounded-lg">
+                          <X size={20} />
+                      </button>
+                  </div>
+                  
+                  <form onSubmit={handleProfileUpdate} className="p-6">
+                      <div className="text-center mb-8">
+                          <div className="w-24 h-24 bg-indigo-50 rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden border-4 border-white shadow-xl relative group ring-1 ring-slate-100">
+                              {profileData.avatarUrl ? (
+                                  <img src={profileData.avatarUrl} alt="Preview" className="w-full h-full object-cover" />
+                              ) : (
+                                  <span className="text-3xl font-bold text-indigo-600">{currentUser.name.slice(0,2).toUpperCase()}</span>
+                              )}
+                          </div>
+                          <h4 className="font-bold text-xl text-slate-800">{currentUser.name}</h4>
+                          <span className="inline-block mt-1 px-3 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full border border-slate-200">{currentUser.role}</span>
+                      </div>
+
+                      <div className="space-y-5">
+                          <div>
+                              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider ml-1">Profile Picture</label>
+                              <div className="relative group">
+                                  <Camera className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                                  <input 
+                                      type="text" 
+                                      placeholder="https://example.com/my-photo.jpg" 
+                                      className="pl-9 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm transition" 
+                                      value={profileData.avatarUrl}
+                                      onChange={(e) => setProfileData({...profileData, avatarUrl: e.target.value})}
+                                  />
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-1.5 ml-1">Paste a URL to an image to update your avatar.</p>
+                          </div>
+
+                          <div>
+                              <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider ml-1">Change Password</label>
+                              <div className="relative group">
+                                  <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                                  <input 
+                                      type="text" 
+                                      placeholder="New password" 
+                                      className="pl-9 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm transition font-mono" 
+                                      value={profileData.password}
+                                      onChange={(e) => setProfileData({...profileData, password: e.target.value})}
+                                  />
+                              </div>
+                          </div>
+                          
+                          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 flex items-center justify-between">
+                              <label className="block text-xs font-medium text-slate-500">Email Address</label>
+                              <div className="text-sm text-slate-700 font-semibold">{currentUser.email}</div>
+                          </div>
+                      </div>
+
+                      <div className="flex justify-between gap-3 mt-8 pt-6 border-t border-slate-100">
+                          <button 
+                              type="button"
+                              onClick={handleLogout}
+                              className="px-5 py-2.5 text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition text-sm font-semibold flex items-center gap-2"
+                          >
+                              <LogOut size={16} /> Sign Out
+                          </button>
+                          
+                          <div className="flex gap-3">
+                              <button 
+                                  type="button"
+                                  onClick={() => setIsProfileOpen(false)}
+                                  className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition text-sm font-semibold"
+                              >
+                                  Cancel
+                              </button>
+                              <button 
+                                  type="submit"
+                                  className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-200 transition text-sm font-bold flex items-center gap-2 active:scale-95 duration-100"
+                              >
+                                  <Save size={16} /> Save
+                              </button>
+                          </div>
+                      </div>
+                  </form>
+              </div>
+          </div>
+      )}
     </div>
   );
 }

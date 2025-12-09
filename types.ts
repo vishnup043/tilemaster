@@ -1,3 +1,4 @@
+
 export enum StockType {
   CERAMIC = 'Ceramic',
   PORCELAIN = 'Porcelain',
@@ -31,6 +32,14 @@ export interface Customer {
   purchasedVolume?: number; // Quantity of tiles purchased (e.g. sqm)
 }
 
+export interface AppNotification {
+  id: string;
+  message: string;
+  date: string; // ISO string
+  isRead: boolean;
+  sender: string; // 'Admin' or name
+}
+
 export interface Employee {
   id: string;
   name: string;
@@ -40,6 +49,8 @@ export interface Employee {
   joinDate: string;
   username?: string;
   password?: string;
+  avatarUrl?: string; // URL to profile picture
+  notifications?: AppNotification[];
 }
 
 export type ViewState = 'DASHBOARD' | 'INVENTORY' | 'CUSTOMERS' | 'EMPLOYEES';

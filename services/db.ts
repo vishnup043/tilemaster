@@ -10,9 +10,9 @@ const KEYS = {
 
 export const DB = {
   /**
-   * Diagnostic: Check if tables exist
+   * Diagnostic: Check if tables exist and connection is alive
    */
-  checkHealth: async (): Promise<'OK' | 'MISSING_TABLES' | 'ERROR'> => {
+  checkHealth: async (): Promise<'OK' | 'MISSING_TABLES' | 'CONNECTION_ERROR' | 'ERROR'> => {
       if (!isSupabaseConfigured || !supabase) return 'ERROR';
       
       try {
@@ -25,9 +25,14 @@ export const DB = {
                 return 'MISSING_TABLES';
             }
             
-            // Check for specific error messages indicating missing tables
-            // This handles cases where the error structure might differ
             const msg = error.message ? error.message.toLowerCase() : '';
+
+            // Network / Fetch Errors
+            if (msg.includes('failed to fetch') || msg.includes('network request failed')) {
+                return 'CONNECTION_ERROR';
+            }
+            
+            // Check for specific error messages indicating missing tables
             if (msg.includes('could not find the table') || msg.includes('does not exist') || msg.includes('relation "tiles" does not exist')) {
                 return 'MISSING_TABLES';
             }
@@ -39,6 +44,10 @@ export const DB = {
         return 'OK';
       } catch (e: any) {
           console.error("DB Health Check Exception:", e);
+          const msg = e.message ? e.message.toLowerCase() : '';
+          if (msg.includes('failed to fetch')) {
+              return 'CONNECTION_ERROR';
+          }
           return 'ERROR';
       }
   },
@@ -53,15 +62,14 @@ export const DB = {
       
       if (error) {
         console.error("Supabase Load Error (Tiles):", error.message);
-        // If error (e.g. table missing), return defaults but DO NOT fallback to local storage
-        return defaultData;
+        // On error, return empty array to prevent partial state confusion
+        return [];
       }
 
-      if (data && data.length > 0) {
+      if (data) {
          return data.map((row: any) => ({ ...row.json_data, id: row.id }));
       }
-      
-      return defaultData;
+      return [];
     }
     
     // Legacy LocalStorage (Only if NO API Key provided)
@@ -120,13 +128,13 @@ export const DB = {
       
       if (error) {
          console.error("Supabase Load Error (Customers):", error.message);
-         return defaultData;
+         return [];
       }
       
-      if (data && data.length > 0) {
+      if (data) {
          return data.map((row: any) => ({ ...row.json_data, id: row.id }));
       }
-      return defaultData;
+      return [];
     }
 
     try {
@@ -179,13 +187,13 @@ export const DB = {
       
       if (error) {
         console.error("Supabase Load Error (Employees):", error.message);
-        return defaultData;
+        return [];
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         return data.map((row: any) => ({ ...row.json_data, id: row.id }));
       }
-      return defaultData;
+      return [];
     }
 
     try {
