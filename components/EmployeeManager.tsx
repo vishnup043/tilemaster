@@ -263,7 +263,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({ employees, set
 
       {/* Send Notification Modal */}
       {notifyId && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 py-4 animate-in fade-in zoom-in-95 duration-200">
              <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden mx-4">
                 <div className="bg-indigo-600 p-4 flex justify-between items-center text-white">
                     <h3 className="font-bold flex items-center gap-2"><BellRing size={18}/> Send Notification</h3>
@@ -293,7 +293,7 @@ export const EmployeeManager: React.FC<EmployeeManagerProps> = ({ employees, set
 
       {/* Delete Confirmation Modal */}
       {deleteId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 py-4 animate-in fade-in zoom-in-95 duration-200">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center mx-4">
                 <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 shadow-sm">
                     <AlertTriangle size={28} />
