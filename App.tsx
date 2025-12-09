@@ -475,7 +475,7 @@ create policy "Public Access Employees" on employees for all using (true);
         </header>
 
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-8 bg-slate-50/50 pb-24 lg:pb-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 md:p-8 bg-slate-50/50 pb-24 lg:pb-8">
           <div className="max-w-7xl mx-auto w-full">
             {renderContent()}
           </div>
