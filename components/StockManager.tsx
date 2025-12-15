@@ -143,7 +143,7 @@ export const StockManager: React.FC<StockManagerProps> = ({ tiles, setTiles }) =
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 py-4 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in zoom-in-95 duration-200">
           <div className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 backdrop-blur sticky top-0 z-10">
               <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Tag size={20} className="text-indigo-600"/> Add New Tile</h3>

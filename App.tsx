@@ -121,6 +121,21 @@ function App() {
     setIsProfileOpen(false);
   };
 
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Image is too large. Please select an image under 2MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileData(prev => ({ ...prev, avatarUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleProfileUpdate = (e: React.FormEvent) => {
       e.preventDefault();
       if (!currentUser) return;
@@ -475,7 +490,7 @@ create policy "Public Access Employees" on employees for all using (true);
         </header>
 
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 md:p-8 bg-slate-50/50 pb-24 lg:pb-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-8 bg-slate-50/50 pb-24 lg:pb-8">
           <div className="max-w-7xl mx-auto w-full">
             {renderContent()}
           </div>
@@ -492,7 +507,7 @@ create policy "Public Access Employees" on employees for all using (true);
 
       {/* Profile Management Modal */}
       {isProfileOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 py-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in zoom-in-95 duration-200">
               <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden mx-4">
                   <div className="bg-slate-50/80 backdrop-blur-xl px-6 py-4 border-b border-slate-100 flex justify-between items-center sticky top-0 z-10">
                       <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -520,16 +535,17 @@ create policy "Public Access Employees" on employees for all using (true);
                           <div>
                               <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider ml-1">Profile Picture</label>
                               <div className="relative group">
-                                  <Camera className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                                  <div className="absolute left-3 top-3 z-10 pointer-events-none text-slate-400">
+                                      <Camera size={16} />
+                                  </div>
                                   <input 
-                                      type="text" 
-                                      placeholder="https://example.com/my-photo.jpg" 
-                                      className="pl-9 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm transition" 
-                                      value={profileData.avatarUrl}
-                                      onChange={(e) => setProfileData({...profileData, avatarUrl: e.target.value})}
+                                      type="file" 
+                                      accept="image/*"
+                                      onChange={handleAvatarUpload}
+                                      className="w-full p-2 pl-10 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition cursor-pointer"
                                   />
                               </div>
-                              <p className="text-[10px] text-slate-400 mt-1.5 ml-1">Paste a URL to an image to update your avatar.</p>
+                              <p className="text-[10px] text-slate-400 mt-1.5 ml-1">Upload a photo from your gallery (Max 2MB).</p>
                           </div>
 
                           <div>
