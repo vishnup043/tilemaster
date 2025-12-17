@@ -177,7 +177,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tiles, customers, employee
         </div>
 
         <div className="space-y-6">
-            <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 rounded-2xl shadow-lg shadow-indigo-200 text-white relative overflow-hidden group">
+            {/* <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-6 rounded-2xl shadow-lg shadow-indigo-200 text-white relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                     <Sparkles size={100} />
                 </div>
@@ -198,7 +198,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ tiles, customers, employee
                         </p>
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             {/* Quick Stats for Meetings */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-full max-h-[400px] flex flex-col">
